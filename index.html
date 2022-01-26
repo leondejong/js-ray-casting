@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Ray Casting</title>
+    <base href="./" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        background: rgba(0, 0, 0, 1);
+      }
+      #canvas {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 60rem;
+        height: 45rem;
+        transform: translate(-50%, -50%);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="960" height="720"></canvas>
+    <script src="./data.js"></script>
+    <script src="./graphics.js"></script>
+    <script src="./logic.js"></script>
+    <script>
+      ;(function () {
+        // Formatted by StandardJS
+
+        const fps = 60 // 60 = requestAnimationFrame
+        const step = 1 / fps
+
+        const canvas = document.getElementById('canvas')
+        const context = canvas.getContext('2d')
+
+        const width = canvas.width
+        const height = canvas.height
+
+        let data
+
+        function update (config, scene, map, player, colors) {
+          const { fov, grid } = config
+          const { width, height, unit } = map
+
+          const {
+            x: px,
+            y: py,
+            direction: dn,
+            translateAmount: ta,
+            translateDirection: td,
+            rotateAmount: ra,
+            rotateDirection: rd
+          } = player
+
+          player.direction = constrainAngle(dn + ra * rd)
+          player.gradient = constrainAngle(dn - fov / 2)
+
+          const x = px + ta * td * Math.cos(dn)
+          const y = py + ta * td * Math.sin(dn)
+
+          if (!collision(x, y, width, height, unit, grid)) {
+            player.x = x
+            player.y = y
+          }
+        }
+
+        function render (config, scene, map, player, colors) {
+          drawSceneBackground(context, scene, colors)
+          drawRays(context, config, scene, map, player, colors, typeScene)
+          drawMapBackground(context, map, colors)
+          drawMap(context, config, map, colors)
+          drawRays(context, config, scene, map, player, colors, typeMap)
+          drawPlayer(context, map, player, colors)
+        }
+
+        const loop = time => {
+          if (fps === 60) {
+            requestAnimationFrame(loop)
+          } else {
+            setTimeout(() => {
+              loop(performance.now())
+            }, step * 1000)
+          }
+
+          const { config, scene, map, player, colors } = data
+
+          background(context, transparent)
+          update(config, scene, map, player, colors)
+          render(config, scene, map, player, colors)
+        }
+
+        function keyDown (event, player) {
+          if (event.keyCode === up) player.translateDirection = 1
+          if (event.keyCode === down) player.translateDirection = -1
+          if (event.keyCode === right) player.rotateDirection = 1
+          if (event.keyCode === left) player.rotateDirection = -1
+        }
+
+        function keyUp (event, player) {
+          if (event.keyCode === up || event.keyCode === down)
+            player.translateDirection = 0
+          if (event.keyCode === right || event.keyCode === left)
+            player.rotateDirection = 0
+        }
+
+        const main = () => {
+          data = getData()
+
+          const { config, scene, player } = data
+
+          config.rays = scene.width / config.resolution
+          config.step = config.fov / config.rays
+
+          document.onkeydown = function (event) {
+            keys[event.which] = true
+            keyDown(event, player)
+          }
+
+          document.onkeyup = function (event) {
+            keys[event.which] = false
+            keyUp(event, player)
+          }
+
+          window.onload = () => requestAnimationFrame(loop)
+        }
+
+        main()
+      })()
+    </script>
+  </body>
+</html>
